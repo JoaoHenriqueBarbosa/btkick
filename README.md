@@ -51,14 +51,17 @@ It also sets the device **trusted**, which on its own makes BlueZ far more willi
 
 Runs on Linux with BlueZ (`bluetoothctl`); `sudo` is only needed for the USB-level tiers.
 
-**Prebuilt binary (no toolchain needed)** — fully static musl builds are attached to every [release](https://github.com/JoaoHenriqueBarbosa/btkick/releases):
+**Download a ready-to-run binary (no Rust needed)** — grab the file for your CPU from the [latest release](https://github.com/JoaoHenriqueBarbosa/btkick/releases/latest):
+
+- `...-x86_64-...` for a normal PC/laptop (Intel/AMD)
+- `...-aarch64-...` for ARM (e.g. a Raspberry Pi)
+
+It's a single self-contained file that runs on any Linux. Unzip it and put it on your PATH:
 
 ```sh
-curl -fsSL https://github.com/JoaoHenriqueBarbosa/btkick/releases/latest/download/btkick-v0.1.0-x86_64-unknown-linux-musl.tar.gz | tar xz
-install -m755 btkick ~/.local/bin/btkick    # or anywhere on your PATH
+tar xzf btkick-*-x86_64-unknown-linux-musl.tar.gz   # the file you downloaded
+install -m755 btkick ~/.local/bin/btkick            # now you can run `btkick`
 ```
-
-(`aarch64-unknown-linux-musl` is published too.)
 
 **From crates.io:**
 

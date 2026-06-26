@@ -1,0 +1,17 @@
+[package]
+name = "btkick"
+version = "0.2.0"
+edition = "2021"
+description = "Aggressive Bluetooth connector + full TUI manager (ratatui)"
+
+[[bin]]
+name = "btkick"
+path = "src/main.rs"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+
+[profile.release]
+opt-level = 3
+lto = true

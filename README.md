@@ -47,6 +47,8 @@ Tiers 4–5 only run for USB adapters and are skipped automatically for built-in
 
 It also sets the device **trusted**, which on its own makes BlueZ far more willing to auto-reconnect.
 
+**Audio follows the device.** Connecting at the BlueZ level isn't enough — the sound has to actually move. On connect, btkick switches the default audio output (PipeWire/PulseAudio, via `pactl`) to the device and moves any playing streams onto it, remembering whichever sink was active before. On disconnect it restores that exact sink (falling back to a local output if it's gone), so you're never left silent. Best-effort and skipped if `pactl` isn't present.
+
 ## Install
 
 Runs on Linux with BlueZ (`bluetoothctl`); `sudo` is only needed for the USB-level tiers.

@@ -196,7 +196,95 @@ pub fn adapter() -> Adapter {
 
 pub fn disconnect(mac: &str) {
     bt(&["disconnect", mac], 6);
+    // Audio must follow the device: send it back to a local (PC) sink, or the
+    // user goes silent. Best-effort — no-op if pactl/PipeWire isn't around.
+    route_audio_to_pc();
 }
+
+// ---- audio routing (PipeWire/PulseAudio via pactl) --------------------------
+// Connecting at the BlueZ level isn't enough — the default sink must move to
+// the device, and back to the PC on disconnect, like every other BT manager.
+
+fn pactl(args: &[&str]) -> String {
+    match Command::new("pactl")
+        .args(args)
+        .stderr(Stdio::null())
+        .output()
+    {
+        Ok(o) => String::from_utf8_lossy(&o.stdout).into_owned(),
+        Err(_) => String::new(),
+    }
+}
+
+/// Sink names from `pactl list short sinks` (second column).
+fn sink_names() -> Vec<String> {
+    pactl(&["list", "short", "sinks"])
+        .lines()
+        .filter_map(|l| l.split_whitespace().nth(1).map(str::to_string))
+        .collect()
+}
+
+fn set_default_and_move(sink: &str) {
+    pactl(&["set-default-sink", sink]);
+    // Move anything currently playing onto the new default.
+    for id in pactl(&["list", "short", "sink-inputs"])
+        .lines()
+        .filter_map(|l| l.split_whitespace().next())
+    {
+        pactl(&["move-sink-input", id, sink]);
+    }
+}
+
+fn current_default_sink() -> Option<String> {
+    let s = pactl(&["get-default-sink"]).trim().to_string();
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+/// Switch audio output to the device's bluez sink. Retries briefly because the
+/// sink shows up a moment after the link connects. Remembers the sink that was
+/// default beforehand so disconnect can restore it. Returns the sink name used.
+pub fn route_audio_to_device(mac: &str) -> Option<String> {
+    let want = format!("bluez_output.{}", mac.replace(':', "_"));
+    for _ in 0..16 {
+        if let Some(sink) = sink_names().into_iter().find(|s| s.starts_with(&want)) {
+            // Record where we came from (unless it's already a bluetooth sink).
+            if let Some(prev) = current_default_sink() {
+                if !prev.starts_with("bluez_") && prev != sink {
+                    crate::config::write_prev_sink(&prev);
+                }
+            }
+            set_default_and_move(&sink);
+            return Some(sink);
+        }
+        sleep_ms(250);
+    }
+    None
+}
+
+/// Switch audio output off the device. Restores the exact sink that was default
+/// before we moved to the device (if it still exists); otherwise falls back to
+/// a local sink — analog, then HDMI, then whatever's left. Returns the sink used.
+pub fn route_audio_to_pc() -> Option<String> {
+    let sinks = sink_names();
+    let remembered = crate::config::read_prev_sink().filter(|p| sinks.contains(p));
+    let pick = remembered.or_else(|| {
+        let local: Vec<&String> = sinks.iter().filter(|s| !s.starts_with("bluez_")).collect();
+        local
+            .iter()
+            .find(|s| s.contains("analog"))
+            .or_else(|| local.iter().find(|s| s.contains("hdmi")))
+            .or_else(|| local.first())
+            .map(|s| s.to_string())
+    })?;
+    set_default_and_move(&pick);
+    crate::config::clear_prev_sink();
+    Some(pick)
+}
+
 pub fn pair(mac: &str) {
     bt(&["pair", mac], 12);
     bt(&["trust", mac], 3);
@@ -220,6 +308,9 @@ pub fn aggressive_connect(mac: String, stop: Arc<AtomicBool>, tx: Sender<Progres
     };
 
     if is_connected(&mac) {
+        if let Some(sink) = route_audio_to_device(&mac) {
+            log(&tx, &format!("routed audio → {sink}"));
+        }
         let _ = tx.send(Progress::Connected(0.0));
         return;
     }
@@ -276,6 +367,9 @@ pub fn aggressive_connect(mac: String, stop: Arc<AtomicBool>, tx: Sender<Progres
     let _ = spammer.join();
 
     if is_connected(&mac) {
+        if let Some(sink) = route_audio_to_device(&mac) {
+            log(&tx, &format!("routed audio → {sink}"));
+        }
         let _ = tx.send(Progress::Connected(start.elapsed().as_secs_f64()));
     } else {
         let _ = tx.send(Progress::GaveUp);

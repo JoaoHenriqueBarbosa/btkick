@@ -1,8 +1,17 @@
 [package]
 name = "btkick"
-version = "0.2.0"
+version = "0.1.0"
 edition = "2021"
-description = "Aggressive Bluetooth connector + full TUI manager (ratatui)"
+rust-version = "1.74"
+description = "Kick flaky Bluetooth into connecting — an aggressive Linux/BlueZ connector with a ratatui TUI manager"
+license = "MIT"
+repository = "https://github.com/JoaoHenriqueBarbosa/btkick"
+homepage = "https://github.com/JoaoHenriqueBarbosa/btkick"
+readme = "README.md"
+authors = ["João Henrique Barbosa <joaohenriquebarbosa21@gmail.com>"]
+keywords = ["bluetooth", "tui", "ratatui", "cli", "bluez"]
+categories = ["command-line-utilities", "os::linux-apis"]
+exclude = [".github/", "release-plz.toml"]
 
 [[bin]]
 name = "btkick"

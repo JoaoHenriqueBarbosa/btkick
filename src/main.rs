@@ -37,7 +37,10 @@ fn main() {
 
     let disconnect = args.iter().any(|a| a == "-d" || a == "--disconnect");
     // Any non-flag argument is treated as a MAC override.
-    let mac_arg = args.iter().find(|a| !a.starts_with('-') && a.contains(':')).cloned();
+    let mac_arg = args
+        .iter()
+        .find(|a| !a.starts_with('-') && a.contains(':'))
+        .cloned();
 
     let mac = match mac_arg.or_else(config::read_default) {
         Some(m) => m,

@@ -1,0 +1,5 @@
+[workspace]
+features_always_increment_minor = true
+semver_check = true
+publish_timeout = "10m"
+pr_labels = ["release"]

@@ -132,12 +132,18 @@ impl App {
 
     fn selected_mac(&self) -> Option<String> {
         let devs = self.devices.lock().unwrap();
-        self.list_state.selected().and_then(|i| devs.get(i)).map(|d| d.mac.clone())
+        self.list_state
+            .selected()
+            .and_then(|i| devs.get(i))
+            .map(|d| d.mac.clone())
     }
 
     fn selected_device(&self) -> Option<Device> {
         let devs = self.devices.lock().unwrap();
-        self.list_state.selected().and_then(|i| devs.get(i)).cloned()
+        self.list_state
+            .selected()
+            .and_then(|i| devs.get(i))
+            .cloned()
     }
 
     fn log(&mut self, m: impl Into<String>) {
@@ -189,7 +195,9 @@ impl App {
     }
 
     fn start_connect(&mut self) {
-        let Some(mac) = self.selected_mac() else { return };
+        let Some(mac) = self.selected_mac() else {
+            return;
+        };
         // If already connecting, the button doubles as Cancel.
         if let Some(stop) = &self.conn_stop {
             stop.store(true, Ordering::Relaxed);
@@ -229,7 +237,9 @@ impl App {
 
     /// Fire-and-forget mutating actions so the UI thread never blocks.
     fn spawn_action(&mut self, action: Action) {
-        let Some(mac) = self.selected_mac() else { return };
+        let Some(mac) = self.selected_mac() else {
+            return;
+        };
         match action {
             Action::Disconnect => {
                 self.status = format!("disconnecting {mac}");
@@ -258,7 +268,9 @@ impl App {
                 Ok(()) => {
                     self.default_mac = Some(mac.clone());
                     self.status = format!("★ default set → {mac}");
-                    self.log(format!("★ default device is now {mac} (btkick connects it directly)"));
+                    self.log(format!(
+                        "★ default device is now {mac} (btkick connects it directly)"
+                    ));
                 }
                 Err(e) => self.status = format!("could not save default: {e}"),
             }
@@ -452,20 +464,41 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
     let a: Adapter = app.adapter.lock().unwrap().clone();
     let on = |b: bool| if b { "on" } else { "off" };
     let dot = |b: bool| if b { Color::Green } else { Color::DarkGray };
-    let scan_label = if app.scanning || a.discovering { "SCANNING" } else { "idle" };
+    let scan_label = if app.scanning || a.discovering {
+        "SCANNING"
+    } else {
+        "idle"
+    };
     let spans = vec![
         Span::styled(" ⬢ ", Style::default().fg(Color::Cyan)),
         Span::styled(
-            format!("{} ", if a.name.is_empty() { "adapter" } else { &a.name }),
+            format!(
+                "{} ",
+                if a.name.is_empty() {
+                    "adapter"
+                } else {
+                    &a.name
+                }
+            ),
             Style::default().add_modifier(Modifier::BOLD),
         ),
-        Span::styled(format!("[{}]  ", a.mac), Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            format!("[{}]  ", a.mac),
+            Style::default().fg(Color::DarkGray),
+        ),
         Span::raw("power:"),
-        Span::styled(format!("{} ", on(a.powered)), Style::default().fg(dot(a.powered))),
+        Span::styled(
+            format!("{} ", on(a.powered)),
+            Style::default().fg(dot(a.powered)),
+        ),
         Span::raw(" "),
         Span::styled(
             format!("{scan_label} "),
-            Style::default().fg(if app.scanning || a.discovering { Color::Yellow } else { Color::DarkGray }),
+            Style::default().fg(if app.scanning || a.discovering {
+                Color::Yellow
+            } else {
+                Color::DarkGray
+            }),
         ),
         Span::raw(" default:"),
         Span::styled(
@@ -487,7 +520,11 @@ fn render_device_list(f: &mut Frame, app: &mut App, area: Rect) {
         .map(|d| {
             let is_default = default_mac.as_deref() == Some(d.mac.as_str());
             let conn_dot = if d.connected { "●" } else { "○" };
-            let conn_color = if d.connected { Color::Green } else { Color::DarkGray };
+            let conn_color = if d.connected {
+                Color::Green
+            } else {
+                Color::DarkGray
+            };
             let star = if is_default { "★ " } else { "  " };
             let mut spans = vec![
                 Span::styled(format!(" {conn_dot} "), Style::default().fg(conn_color)),
@@ -509,9 +546,15 @@ fn render_device_list(f: &mut Frame, app: &mut App, area: Rect) {
                 tags.push_str("trusted ");
             }
             spans.push(Span::styled(tags, Style::default().fg(Color::Blue)));
-            spans.push(Span::styled(battery_str(d), Style::default().fg(Color::Green)));
+            spans.push(Span::styled(
+                battery_str(d),
+                Style::default().fg(Color::Green),
+            ));
             if let Some(r) = d.rssi {
-                spans.push(Span::styled(format!(" {r}dBm"), Style::default().fg(Color::DarkGray)));
+                spans.push(Span::styled(
+                    format!(" {r}dBm"),
+                    Style::default().fg(Color::DarkGray),
+                ));
             }
             ListItem::new(Line::from(spans))
         })
@@ -520,7 +563,11 @@ fn render_device_list(f: &mut Frame, app: &mut App, area: Rect) {
     let title = format!(" devices ({}) ", devs.len());
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title(title))
-        .highlight_style(Style::default().bg(Color::Indexed(238)).add_modifier(Modifier::BOLD))
+        .highlight_style(
+            Style::default()
+                .bg(Color::Indexed(238))
+                .add_modifier(Modifier::BOLD),
+        )
         .highlight_symbol("▏");
     f.render_stateful_widget(list, area, &mut app.list_state);
 }
@@ -546,10 +593,22 @@ fn render_detail(f: &mut Frame, app: &App, area: Rect) {
         lines.push(kv(
             "connected",
             yn(d.connected).into(),
-            if d.connected { Color::Green } else { Color::Red },
+            if d.connected {
+                Color::Green
+            } else {
+                Color::Red
+            },
         ));
         lines.push(kv("paired", yn(d.paired).into(), Color::White));
-        lines.push(kv("trusted", yn(d.trusted).into(), if d.trusted { Color::Green } else { Color::Yellow }));
+        lines.push(kv(
+            "trusted",
+            yn(d.trusted).into(),
+            if d.trusted {
+                Color::Green
+            } else {
+                Color::Yellow
+            },
+        ));
         if let Some(b) = d.battery {
             if b > 0 {
                 lines.push(kv("battery", format!("{b}%"), Color::Green));
@@ -562,7 +621,11 @@ fn render_detail(f: &mut Frame, app: &App, area: Rect) {
         lines.push(kv(
             "default",
             yn(is_default).into(),
-            if is_default { Color::Yellow } else { Color::DarkGray },
+            if is_default {
+                Color::Yellow
+            } else {
+                Color::DarkGray
+            },
         ));
     } else {
         lines.push(Line::from("no device selected"));
@@ -593,14 +656,21 @@ fn render_log(f: &mut Frame, app: &App, area: Rect) {
         .iter()
         .map(|l| Line::from(Span::raw(l.clone())))
         .collect();
-    let p = Paragraph::new(lines)
-        .block(Block::default().borders(Borders::ALL).title(" log "));
+    let p = Paragraph::new(lines).block(Block::default().borders(Borders::ALL).title(" log "));
     f.render_widget(p, area);
 }
 
 fn render_buttons(f: &mut Frame, app: &mut App, area: Rect) {
-    let connect_label = if app.connecting.is_some() { "[ Cancel ]" } else { "[ Connect ]" };
-    let scan_label = if app.scanning { "[ Scan✓ ]" } else { "[ Scan ]" };
+    let connect_label = if app.connecting.is_some() {
+        "[ Cancel ]"
+    } else {
+        "[ Connect ]"
+    };
+    let scan_label = if app.scanning {
+        "[ Scan✓ ]"
+    } else {
+        "[ Scan ]"
+    };
     let specs: [(&str, Action); 8] = [
         (connect_label, Action::Connect),
         ("[ Disconnect ]", Action::Disconnect),
@@ -618,7 +688,12 @@ fn render_buttons(f: &mut Frame, app: &mut App, area: Rect) {
     let mut x = area.x + 1; // inside left border
     for (label, action) in specs {
         let w = label.chars().count() as u16;
-        app.buttons.push(Button { action, x0: x, x1: x + w, y });
+        app.buttons.push(Button {
+            action,
+            x0: x,
+            x1: x + w,
+            y,
+        });
         let color = match action {
             Action::Connect if app.connecting.is_some() => Color::Red,
             Action::Connect => Color::Green,
@@ -626,7 +701,10 @@ fn render_buttons(f: &mut Frame, app: &mut App, area: Rect) {
             Action::SetDefault => Color::Yellow,
             _ => Color::White,
         };
-        spans.push(Span::styled(label, Style::default().fg(color).add_modifier(Modifier::BOLD)));
+        spans.push(Span::styled(
+            label,
+            Style::default().fg(color).add_modifier(Modifier::BOLD),
+        ));
         spans.push(Span::raw(" "));
         x += w + 1;
     }
@@ -662,15 +740,16 @@ pub fn run() -> io::Result<()> {
 
     app.cleanup();
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
     terminal.show_cursor()?;
     res
 }
 
-fn event_loop(
-    terminal: &mut Terminal<CrosstermBackend<Stdout>>,
-    app: &mut App,
-) -> io::Result<()> {
+fn event_loop(terminal: &mut Terminal<CrosstermBackend<Stdout>>, app: &mut App) -> io::Result<()> {
     loop {
         app.drain_progress();
         // Keep selection in range as the list refreshes underneath us.

@@ -1,0 +1,32 @@
+name: Release binaries
+
+# When release-plz (or a manual release) publishes a GitHub Release, build
+# fully static musl binaries that run on any Linux without a toolchain and
+# attach them as tar.gz assets.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build and upload
+        uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: btkick
+          target: ${{ matrix.target }}
+          archive: btkick-$tag-$target
+          checksum: sha256
+          token: ${{ secrets.GITHUB_TOKEN }}

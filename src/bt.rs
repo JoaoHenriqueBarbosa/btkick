@@ -93,7 +93,11 @@ pub struct Adapter {
 pub fn bt(args: &[&str], timeout_s: u32) -> String {
     let mut full = vec![timeout_s.to_string(), "bluetoothctl".to_string()];
     full.extend(args.iter().map(|s| s.to_string()));
-    match Command::new("timeout").args(&full).stderr(Stdio::null()).output() {
+    match Command::new("timeout")
+        .args(&full)
+        .stderr(Stdio::null())
+        .output()
+    {
         Ok(o) => String::from_utf8_lossy(&o.stdout).into_owned(),
         Err(_) => String::new(),
     }
@@ -339,7 +343,9 @@ fn t_usb_rebind(mac: &str, emit: &dyn Fn(&str)) {
         emit("no USB dongle found (built-in adapter?) — skipping");
         return;
     };
-    emit(&format!("unbinding USB dongle {node} from driver (software replug)"));
+    emit(&format!(
+        "unbinding USB dongle {node} from driver (software replug)"
+    ));
     write_sysfs(USB_UNBIND, &node);
     sleep_ms(1500);
     write_sysfs(USB_BIND, &node);

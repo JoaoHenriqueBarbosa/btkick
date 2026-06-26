@@ -1,11 +1,24 @@
 name: Release binaries
 
-# When release-plz (or a manual release) publishes a GitHub Release, build
-# fully static musl binaries that run on any Linux without a toolchain and
-# attach them as tar.gz assets.
+# Builds fully static musl binaries (x86_64 + aarch64) that run on any Linux
+# without a toolchain, and attaches them as tar.gz assets to the release.
+#
+# Releases created by release-plz use GITHUB_TOKEN, which does NOT trigger
+# `release: published`, so this is a reusable workflow invoked by release-plz
+# (workflow_call). It can also be run manually for a given tag (workflow_dispatch).
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag to build and upload binaries for (e.g. v0.1.0)
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build and upload binaries for (e.g. v0.1.0)
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -22,11 +35,14 @@ jobs:
           - aarch64-unknown-linux-musl
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
       - name: Build and upload
         uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: btkick
           target: ${{ matrix.target }}
           archive: btkick-$tag-$target
+          ref: refs/tags/${{ inputs.tag }}
           checksum: sha256
           token: ${{ secrets.GITHUB_TOKEN }}

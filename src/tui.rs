@@ -216,22 +216,19 @@ impl App {
 
     fn toggle_scan(&mut self) {
         if self.scanning {
-            if let Some(mut c) = self.scan_child.take() {
-                let _ = c.kill();
-                let _ = c.wait();
+            if let Some(c) = self.scan_child.take() {
+                bt::stop_scan(c);
             }
-            bt::bt(&["scan", "off"], 3);
             self.scanning = false;
             self.status = "scan off".into();
         } else {
-            self.scan_child = std::process::Command::new("bluetoothctl")
-                .args(["scan", "on"])
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .spawn()
-                .ok();
-            self.scanning = true;
-            self.status = "scanning…".into();
+            self.scan_child = bt::spawn_scan();
+            if self.scan_child.is_some() {
+                self.scanning = true;
+                self.status = "scanning…".into();
+            } else {
+                self.status = "could not start scan (bluetoothctl missing?)".into();
+            }
         }
     }
 
@@ -342,10 +339,8 @@ impl App {
         if let Some(stop) = &self.conn_stop {
             stop.store(true, Ordering::Relaxed);
         }
-        if let Some(mut c) = self.scan_child.take() {
-            let _ = c.kill();
-            let _ = c.wait();
-            bt::bt(&["scan", "off"], 3);
+        if let Some(c) = self.scan_child.take() {
+            bt::stop_scan(c);
         }
     }
 }

@@ -285,6 +285,54 @@ pub fn route_audio_to_pc() -> Option<String> {
     Some(pick)
 }
 
+// ---- discovery (scan) sessions ----------------------------------------------
+// BlueZ scopes discovery to the D-Bus client that requested it, and a
+// non-interactive `bluetoothctl scan on` exits immediately — killing the scan
+// the moment it starts. To actually keep discovering we hold an *interactive*
+// bluetoothctl open with `scan on` written to its stdin; discovery lives for
+// as long as that child does.
+
+/// Start a discovery session. Returns the child keeping it alive; pass it to
+/// `stop_scan` (or just let it die) to stop discovering.
+pub fn spawn_scan() -> Option<std::process::Child> {
+    let mut child = Command::new("bluetoothctl")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+    if let Some(stdin) = child.stdin.as_mut() {
+        if stdin
+            .write_all(b"scan on\n")
+            .and_then(|_| stdin.flush())
+            .is_ok()
+        {
+            return Some(child);
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    None
+}
+
+/// Stop a session from `spawn_scan`: ask politely via stdin (EOF also makes
+/// bluetoothctl exit, which drops the discovery), then reap — kill if hung.
+pub fn stop_scan(mut child: std::process::Child) {
+    if let Some(stdin) = child.stdin.as_mut() {
+        let _ = stdin.write_all(b"scan off\nexit\n");
+        let _ = stdin.flush();
+    }
+    drop(child.stdin.take());
+    for _ in 0..10 {
+        if let Ok(Some(_)) = child.try_wait() {
+            return;
+        }
+        sleep_ms(50);
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 pub fn pair(mac: &str) {
     bt(&["pair", mac], 12);
     bt(&["trust", mac], 3);
@@ -398,12 +446,7 @@ fn t_repair(mac: &str, emit: &dyn Fn(&str)) {
     emit("removing bond, scanning, re-pairing");
     bt(&["remove", mac], 5);
     sleep_ms(300);
-    let mut scan = Command::new("bluetoothctl")
-        .args(["scan", "on"])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok();
+    let scan = spawn_scan();
     for _ in 0..16 {
         if bt(&["devices"], 4).contains(mac) {
             break;
@@ -413,11 +456,9 @@ fn t_repair(mac: &str, emit: &dyn Fn(&str)) {
     bt(&["pair", mac], 10);
     bt(&["trust", mac], 3);
     bt(&["connect", mac], 8);
-    if let Some(mut s) = scan.take() {
-        let _ = s.kill();
-        let _ = s.wait();
+    if let Some(s) = scan {
+        stop_scan(s);
     }
-    bt(&["scan", "off"], 3);
 }
 
 fn t_usb_auth(mac: &str, emit: &dyn Fn(&str)) {

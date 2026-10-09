@@ -1,6 +1,6 @@
 [package]
 name = "btkick"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.74"
 description = "Kick flaky Bluetooth into connecting — an aggressive Linux/BlueZ connector with a ratatui TUI manager"

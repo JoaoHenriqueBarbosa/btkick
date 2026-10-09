@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/JoaoHenriqueBarbosa/btkick/compare/v0.1.1...v0.2.0) - 2026-10-09
+
+### Added
+
+- move audio sink to device on connect, restore previous on disconnect
+
+### Fixed
+
+- keep a live bluetoothctl session for scan so discovery actually runs
+
+### Other
+
+- snapshot antes do offload para jet-dev
+- add community health files (CoC, contributing, security, templates)
+- add project README and license
+
 ## [0.1.1](https://github.com/JoaoHenriqueBarbosa/btkick/compare/v0.1.0...v0.1.1) - 2026-06-26
 
 ### Other
